@@ -3,20 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>看看這週和哪組數字有緣</title>
+    <title>看看這週和哪一組數字有緣</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/ccapture.js@1.1.0/build/CCapture.all.min.js"></script>
     <style>
         body {
             font-family: 'Noto Sans TC', sans-serif;
-            background-color: #f5ebe0; /* 奶茶背景色 */
-            color: #4e342e; /* 深咖啡色文字 */
+            background-color: #f5ebe0; 
+            color: #4e342e; 
         }
 
         :root {
             --wheel-size: 320px;
-            --accent-color: #d6ccc2; /* 奶油色 */
-            --primary-button: #a98467; /* 咖啡色 */
         }
 
         @media (min-width: 640px) {
@@ -27,12 +26,10 @@
             width: var(--wheel-size);
             height: var(--wheel-size);
             position: relative;
-            transition: transform 6s cubic-bezier(0.2, 0, 0.1, 1);
             border: 8px solid #edede9;
             box-shadow: 0 10px 30px rgba(0,0,0,0.05);
         }
 
-        /* 韓系簡約指針 */
         .pointer {
             position: absolute;
             top: -10px;
@@ -70,17 +67,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         }
 
-        .center-dot::inner {
-            width: 10px;
-            height: 10px;
-            background: #a98467;
-            border-radius: 50%;
-        }
-
-        /* 按鈕樣式 */
         .spin-btn {
             background-color: #a98467;
             color: white;
@@ -92,34 +80,56 @@
             box-shadow: 0 4px 15px rgba(169, 132, 103, 0.3);
         }
 
-        .spin-btn:hover {
+        .spin-btn:hover:not(:disabled) {
             background-color: #8c6a51;
             transform: translateY(-2px);
         }
 
-        .spin-btn:active {
-            transform: translateY(0);
+        .spin-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .gif-btn {
+            background-color: transparent;
+            color: #a98467;
+            border: 1px solid #a98467;
+            padding: 8px 24px;
+            border-radius: 30px;
+            font-size: 0.875rem;
+            margin-top: 1rem;
+            transition: all 0.3s ease;
         }
 
-        /* 結果顯示動畫 */
-        .fade-in {
-            animation: fadeIn 0.8s ease forwards;
-        }
+        .gif-btn:hover { background-color: #a98467; color: white; }
+
+        .fade-in { animation: fadeIn 0.8s ease forwards; }
 
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        #recordingStatus {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(169, 132, 103, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            display: none;
+            z-index: 100;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-6">
 
+    <div id="recordingStatus">錄製中，請稍候...</div>
+
     <div class="text-center mb-10">
-        <h1 class="text-xl font-light tracking-[0.3em] text-[#7f5539] mb-3">來測測看你本週代表數字</h1>
+        <!-- 這是您想要更改的標題文字 -->
+        <h1 class="text-xl font-light tracking-[0.3em] text-[#7f5539] mb-3">看看這週和哪一組數字有緣</h1>
         <div class="w-16 h-0.5 bg-[#d6ccc2] mx-auto"></div>
     </div>
 
-    <!-- 輪盤主體 -->
     <div class="relative mb-12">
         <div class="pointer"></div>
         <div id="wheel-container" class="rounded-full bg-white overflow-hidden">
@@ -130,13 +140,12 @@
         </div>
     </div>
 
-    <!-- 旋轉按鈕 -->
-    <button id="spinBtn" class="spin-btn mb-12 uppercase">
-        START
-    </button>
+    <div class="flex flex-col items-center gap-4">
+        <button id="spinBtn" class="spin-btn uppercase">START</button>
+        <button id="gifBtn" class="gif-btn">錄製並下載 GIF</button>
+    </div>
 
-    <!-- 結果顯示區 -->
-    <div id="resultBox" class="hidden text-center fade-in">
+    <div id="resultBox" class="hidden text-center mt-12 fade-in">
         <div class="inline-block bg-white/50 backdrop-blur-sm px-8 py-6 rounded-3xl border border-[#d6ccc2] min-w-[280px]">
             <span id="resultCategory" class="text-xs tracking-[0.2em] text-[#a98467] font-medium uppercase mb-2 block">CATEGORY</span>
             <h2 id="resultNumber" class="text-6xl font-extralight text-[#7f5539] mb-4">--</h2>
@@ -145,7 +154,6 @@
     </div>
 
     <script>
-        // 簡化後的分類配色 (柔和奶茶色調)
         const categories = [
             { name: "天醫", color: "#e9edc9", desc: "聰明與財富的流動", numbers: ["13", "31", "68", "86", "49", "94", "27", "72"] },
             { name: "延年", color: "#dbe7e4", desc: "展現才幹與責任的高度", numbers: ["19", "91", "78", "87", "34", "43", "26", "62"] },
@@ -168,38 +176,46 @@
         const ctx = canvas.getContext('2d');
         const container = document.getElementById('wheel-container');
         const spinBtn = document.getElementById('spinBtn');
+        const gifBtn = document.getElementById('gifBtn');
         const resultBox = document.getElementById('resultBox');
+        const status = document.getElementById('recordingStatus');
 
         let isSpinning = false;
-        let currentRotation = 0;
+        let rotation = 0;
+        let velocity = 0;
+        let capturer = null;
+        let isRecording = false;
 
-        function drawWheel() {
+        function initCanvas() {
             const size = container.offsetWidth;
             canvas.width = size;
             canvas.height = size;
+            render();
+        }
+
+        function render() {
+            const size = canvas.width;
             const centerX = size / 2;
             const centerY = size / 2;
             const radius = size / 2;
             const sliceAngle = (2 * Math.PI) / allOptions.length;
 
             ctx.clearRect(0, 0, size, size);
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(rotation);
+            ctx.translate(-centerX, -centerY);
 
             allOptions.forEach((option, i) => {
                 const angle = i * sliceAngle;
-                
-                // 畫扇形
                 ctx.beginPath();
                 ctx.moveTo(centerX, centerY);
                 ctx.arc(centerX, centerY, radius, angle, angle + sliceAngle);
                 ctx.fillStyle = option.color;
                 ctx.fill();
-                
-                // 極簡線條邊框
                 ctx.strokeStyle = "rgba(255,255,255,0.5)";
-                ctx.lineWidth = 1;
                 ctx.stroke();
 
-                // 畫數字
                 ctx.save();
                 ctx.translate(centerX, centerY);
                 ctx.rotate(angle + sliceAngle / 2);
@@ -209,48 +225,65 @@
                 ctx.fillText(option.num, radius - 20, 5);
                 ctx.restore();
             });
+            ctx.restore();
         }
 
-        function spin() {
+        function animate() {
+            if (velocity > 0.001) {
+                rotation += velocity;
+                velocity *= 0.985;
+                render();
+                if (isRecording) capturer.capture(canvas);
+                requestAnimationFrame(animate);
+            } else if (isSpinning) {
+                isSpinning = false;
+                velocity = 0;
+                spinBtn.disabled = false;
+                gifBtn.disabled = false;
+                if (isRecording) {
+                    isRecording = false;
+                    capturer.stop();
+                    capturer.save();
+                    status.style.display = 'none';
+                }
+                calculateResult();
+            }
+        }
+
+        function startSpin(record = false) {
             if (isSpinning) return;
             isSpinning = true;
-            
             resultBox.style.opacity = 0;
-            
-            const extraDegrees = Math.floor(Math.random() * 360);
-            const totalSpin = (360 * 10) + extraDegrees;
-            currentRotation += totalSpin;
-            
-            container.style.transform = `rotate(-${currentRotation}deg)`;
-
-            setTimeout(() => {
-                isSpinning = false;
-                calculateResult();
-            }, 6000);
+            spinBtn.disabled = true;
+            gifBtn.disabled = true;
+            velocity = 0.2 + Math.random() * 0.2;
+            if (record) {
+                isRecording = true;
+                status.style.display = 'block';
+                capturer = new CCapture({ format: 'gif', workersPath: 'https://unpkg.com/ccapture.js@1.1.0/src/', framerate: 30 });
+                capturer.start();
+            }
+            animate();
         }
 
         function calculateResult() {
-            const rotationInside360 = currentRotation % 360;
-            const sliceSize = 360 / allOptions.length;
-            
-            // 指針在正上方 (270度方向)
-            let index = Math.floor(((rotationInside360 + 270) % 360) / sliceSize);
-            
+            const normalizedRotation = rotation % (2 * Math.PI);
+            const sliceAngle = (2 * Math.PI) / allOptions.length;
+            let targetAngle = (1.5 * Math.PI - normalizedRotation);
+            while (targetAngle < 0) targetAngle += 2 * Math.PI;
+            const index = Math.floor(targetAngle / sliceAngle) % allOptions.length;
             const winner = allOptions[index];
-
             document.getElementById('resultNumber').innerText = winner.num;
             document.getElementById('resultCategory').innerText = winner.cat;
             document.getElementById('resultDesc').innerText = winner.desc;
-            
             resultBox.classList.remove('hidden');
             resultBox.style.opacity = 1;
         }
 
-        window.addEventListener('load', drawWheel);
-        window.addEventListener('resize', drawWheel);
-        spinBtn.addEventListener('click', spin);
-
+        window.addEventListener('load', initCanvas);
+        window.addEventListener('resize', initCanvas);
+        spinBtn.addEventListener('click', () => startSpin(false));
+        gifBtn.addEventListener('click', () => startSpin(true));
     </script>
 </body>
 </html>
-
