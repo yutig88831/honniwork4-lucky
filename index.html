@@ -6,7 +6,6 @@
     <title>看看這週和哪一組數字有緣</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/ccapture.js@1.1.0/build/CCapture.all.min.js"></script>
     <style>
         body {
             font-family: 'Noto Sans TC', sans-serif;
@@ -72,7 +71,7 @@
         .spin-btn {
             background-color: #a98467;
             color: white;
-            padding: 12px 40px;
+            padding: 12px 50px;
             border-radius: 30px;
             font-weight: 500;
             letter-spacing: 2px;
@@ -87,45 +86,17 @@
 
         .spin-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .gif-btn {
-            background-color: transparent;
-            color: #a98467;
-            border: 1px solid #a98467;
-            padding: 8px 24px;
-            border-radius: 30px;
-            font-size: 0.875rem;
-            margin-top: 1rem;
-            transition: all 0.3s ease;
-        }
-
-        .gif-btn:hover { background-color: #a98467; color: white; }
-
         .fade-in { animation: fadeIn 0.8s ease forwards; }
 
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
-        #recordingStatus {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(169, 132, 103, 0.9);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 10px;
-            display: none;
-            z-index: 100;
-        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-6">
 
-    <div id="recordingStatus">錄製中，請稍候...</div>
-
     <div class="text-center mb-10">
-        <!-- 這是您想要更改的標題文字 -->
         <h1 class="text-xl font-light tracking-[0.3em] text-[#7f5539] mb-3">看看這週和哪一組數字有緣</h1>
         <div class="w-16 h-0.5 bg-[#d6ccc2] mx-auto"></div>
     </div>
@@ -140,9 +111,8 @@
         </div>
     </div>
 
-    <div class="flex flex-col items-center gap-4">
+    <div class="flex flex-col items-center">
         <button id="spinBtn" class="spin-btn uppercase">START</button>
-        <button id="gifBtn" class="gif-btn">錄製並下載 GIF</button>
     </div>
 
     <div id="resultBox" class="hidden text-center mt-12 fade-in">
@@ -176,15 +146,11 @@
         const ctx = canvas.getContext('2d');
         const container = document.getElementById('wheel-container');
         const spinBtn = document.getElementById('spinBtn');
-        const gifBtn = document.getElementById('gifBtn');
         const resultBox = document.getElementById('resultBox');
-        const status = document.getElementById('recordingStatus');
 
         let isSpinning = false;
         let rotation = 0;
         let velocity = 0;
-        let capturer = null;
-        let isRecording = false;
 
         function initCanvas() {
             const size = container.offsetWidth;
@@ -233,36 +199,22 @@
                 rotation += velocity;
                 velocity *= 0.985;
                 render();
-                if (isRecording) capturer.capture(canvas);
                 requestAnimationFrame(animate);
             } else if (isSpinning) {
                 isSpinning = false;
                 velocity = 0;
                 spinBtn.disabled = false;
-                gifBtn.disabled = false;
-                if (isRecording) {
-                    isRecording = false;
-                    capturer.stop();
-                    capturer.save();
-                    status.style.display = 'none';
-                }
                 calculateResult();
             }
         }
 
-        function startSpin(record = false) {
+        function startSpin() {
             if (isSpinning) return;
             isSpinning = true;
             resultBox.style.opacity = 0;
             spinBtn.disabled = true;
-            gifBtn.disabled = true;
+            // 隨機初始速度
             velocity = 0.2 + Math.random() * 0.2;
-            if (record) {
-                isRecording = true;
-                status.style.display = 'block';
-                capturer = new CCapture({ format: 'gif', workersPath: 'https://unpkg.com/ccapture.js@1.1.0/src/', framerate: 30 });
-                capturer.start();
-            }
             animate();
         }
 
@@ -273,17 +225,18 @@
             while (targetAngle < 0) targetAngle += 2 * Math.PI;
             const index = Math.floor(targetAngle / sliceAngle) % allOptions.length;
             const winner = allOptions[index];
+            
             document.getElementById('resultNumber').innerText = winner.num;
             document.getElementById('resultCategory').innerText = winner.cat;
             document.getElementById('resultDesc').innerText = winner.desc;
+            
             resultBox.classList.remove('hidden');
             resultBox.style.opacity = 1;
         }
 
         window.addEventListener('load', initCanvas);
         window.addEventListener('resize', initCanvas);
-        spinBtn.addEventListener('click', () => startSpin(false));
-        gifBtn.addEventListener('click', () => startSpin(true));
+        spinBtn.addEventListener('click', startSpin);
     </script>
 </body>
 </html>
